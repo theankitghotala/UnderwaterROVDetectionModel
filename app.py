@@ -93,7 +93,7 @@ if show_metrics:
     col_a, col_b, col_c = st.columns(3)
     col_a.metric("Data Split", "88% Train / 8% Test / 8% Validation")
     col_b.metric("Training Epochs", "100")
-    col_c.metric("Optimizer", "SGD / AdamW")
+    col_c.metric("Optimizer", "MuSGD")
     
     st.markdown("""
     **Core Algorithm:** YOLO (Ultralytics)  
