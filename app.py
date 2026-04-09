@@ -20,7 +20,7 @@ def download_model(file_id, output):
     session = requests.Session()
     
     with st.spinner("Establishing secure connection to Google Drive..."):
-        response = session.get(URL, params={'id': file_id}, stream=True)
+        response = session.get(URL, params={'id': 1G_jSSntgCvKx1hQenzEkkv0-HNhEhw26}, stream=True)
         token = None
         
         # Look for the confirm token in cookies
