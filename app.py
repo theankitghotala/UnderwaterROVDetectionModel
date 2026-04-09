@@ -60,7 +60,7 @@ if uploaded_file is not None:
 
         with st.status("Analyzing Underwater Environment...", expanded=True) as status:
             st.write("Preprocessing image frames...")
-            img_array = np.array(original_image)
+            img_array = np.array(image)
         
             st.write("Running ROV detection model...")
             results = model.predict(image, conf=conf_threshold)
