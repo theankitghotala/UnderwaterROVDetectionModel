@@ -30,7 +30,7 @@ def download_model(file_id, output):
                 break
 
         if token:
-            params = {'id': file_id, 'confirm': token}
+            params = {'id': 1G_jSSntgCvKx1hQenzEkkv0-HNhEhw26, 'confirm': token}
             response = session.get(URL, params=params, stream=True)
 
         # Save the actual binary content
@@ -44,7 +44,7 @@ def download_model(file_id, output):
 model_path = "best.pt"
 if not os.path.exists(model_path):
     # REPLACE 'YOUR_FILE_ID_HERE' with the ID you copied in Step 1
-    download_model('YOUR_FILE_ID_HERE', model_path)
+    download_model('1G_jSSntgCvKx1hQenzEkkv0-HNhEhw26', model_path)
 
 @st.cache_resource
 def load_model():
