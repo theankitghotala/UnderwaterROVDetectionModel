@@ -4,16 +4,30 @@ import tempfile
 import cv2
 import PIL.Image
 import pandas as pd 
-
+import os
+import requests
 # Page Config
 st.set_page_config(page_title="ROV Detection Dashboard", layout="wide")
 st.title("🚢 Underwater ROV Detection System")
 st.sidebar.title("Settings")
 
-# 1. Load the Model
+# 1. Download function for large files
+def download_model(file_id, output):
+    url = f'https://drive.google.com/uc?id={file_id}'
+    with st.spinner("Downloading model weights... this may take a minute."):
+        response = requests.get(url)
+        with open(output, 'wb') as f:
+            f.write(response.content)
+
+# 2. Check if file exists, else download
+model_path = "best.pt"
+if not os.path.exists(model_path):
+    # REPLACE 'YOUR_FILE_ID_HERE' with the ID you copied in Step 1
+    download_model('YOUR_FILE_ID_HERE', model_path)
+
 @st.cache_resource
 def load_model():
-    return YOLO("best.pt")
+    return YOLO(model_path)
 
 model = load_model()
 
