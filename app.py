@@ -101,3 +101,47 @@ if st.sidebar.button("📊 View Training Metrics"):
         
     except Exception as e:
         st.error(f"Could not load results.csv: {e}")
+
+# 6. Training Metrics Section
+st.sidebar.markdown("---")
+if st.sidebar.button("📊 View Training Metrics"):
+    st.header("Technical Training & Performance Analysis")
+    
+    # Technical Summary for the Professor
+    st.subheader("Objectives & Dataset Summary")
+    col_a, col_b, col_c = st.columns(3)
+    col_a.metric("Data Split", "80% Train / 20% Test")
+    col_b.metric("Training Epochs", "100")
+    col_c.metric("Optimizer", "SGD / AdamW")
+    
+    st.markdown("""
+    **Core Algorithm:** YOLO (Ultralytics)  
+    **Objective:** High-precision object detection for underwater ROV navigation in turbid environments.
+    """)
+
+    try:
+        df = pd.read_csv("results.csv")
+        df.columns = df.columns.str.strip()
+        
+        # Section 1: Loss Curves (The 'How it Learned' part)
+        st.subheader("Training vs. Testing (Validation) Loss")
+        st.info("These curves show how the error decreased over 100 epochs.")
+        
+        # Display Box and Class Loss side-by-side
+        c1, c2 = st.columns(2)
+        with c1:
+            st.write("**Box Loss (Localization Error)**")
+            st.line_chart(df[['train/box_loss', 'val/box_loss']])
+        with c2:
+            st.write("**Class Loss (Identification Error)**")
+            st.line_chart(df[['train/cls_loss', 'val/cls_loss']])
+            
+        # Section 2: Accuracy Metrics (mAP)
+        st.subheader("Mean Average Precision (mAP)")
+        st.line_chart(df[['metrics/mAP50(B)', 'metrics/mAP50-95(B)']])
+        
+        st.write("**Recent Epoch Data Table**")
+        st.dataframe(df.tail(10)) 
+        
+    except Exception as e:
+        st.error(f"Could not load results.csv: {e}")
