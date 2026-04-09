@@ -12,12 +12,33 @@ st.title("🚢 Underwater ROV Detection System")
 st.sidebar.title("Settings")
 
 # 1. Download function for large files
+import requests
+
 def download_model(file_id, output):
-    url = f'https://drive.google.com/uc?id={file_id}'
-    with st.spinner("Downloading model weights... this may take a minute."):
-        response = requests.get(url)
+    # Google Drive download URL with virus scan bypass logic
+    URL = "https://docs.google.com/uc?export=download"
+    session = requests.Session()
+    
+    with st.spinner("Establishing secure connection to Google Drive..."):
+        response = session.get(URL, params={'id': file_id}, stream=True)
+        token = None
+        
+        # Look for the confirm token in cookies
+        for key, value in response.cookies.items():
+            if key.startswith('download_warning'):
+                token = value
+                break
+
+        if token:
+            params = {'id': file_id, 'confirm': token}
+            response = session.get(URL, params=params, stream=True)
+
+        # Save the actual binary content
         with open(output, 'wb') as f:
-            f.write(response.content)
+            for chunk in response.iter_content(chunk_size=32768):
+                if chunk: # filter out keep-alive new chunks
+                    f.write(chunk)
+    st.success("Model weights downloaded successfully!")
 
 # 2. Check if file exists, else download
 model_path = "best.pt"
