@@ -60,16 +60,25 @@ if uploaded_file is not None:
         c2.metric(label="Model Accuracy (mAP50)", value="98.4%")
         
     else:
-        # Video Handling
-        tfile = tempfile.NamedTemporaryFile(delete=False)
-        tfile.write(uploaded_file.read())
+        # REPLACE YOUR OLD VIDEO BLOCK WITH THIS:
+        temp_video_path = "temp_video.mp4"
         
-        st.video(tfile.name)
+        with open(temp_video_path, "wb") as f:
+            f.write(uploaded_file.read())
+        
+        st.video(temp_video_path)
+        
         if st.button("Process Video"):
             with st.spinner("Analyzing frames..."):
-                results = model.predict(source=tfile.name, conf=conf_threshold, save=True)
+                # Pass the stable string path directly to YOLO
+                results = model.predict(source=temp_video_path, conf=conf_threshold, save=True)
+                
                 st.success("Video processed successfully!")
                 st.info("Note: Resulting detections are generated on the server.")
+                
+                # Cleanup to keep the server clean
+                if os.path.exists(temp_video_path):
+                    os.remove(temp_video_path)
 
 # 5. Training Metrics Section
 st.sidebar.markdown("---")
