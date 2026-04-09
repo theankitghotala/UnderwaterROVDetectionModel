@@ -39,7 +39,7 @@ def load_model():
 model = load_model()
 
 # 3. Sidebar Controls
-conf_threshold = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.5)
+conf_threshold = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.9)
 st.sidebar.info("Increase this to reduce false detections in murky water.")
 
 # 4. File Uploader
