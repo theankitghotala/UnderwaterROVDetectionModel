@@ -12,7 +12,7 @@ st.set_page_config(page_title="ROV Detection Dashboard", layout="wide")
 st.title("🚢 Underwater ROV Detection System")
 st.sidebar.title("Settings")
 
-# 1. CLEANED Download Function (Optimized for GitHub Releases)
+# 1. Download Function
 def download_model(url, output):
     with st.spinner("Downloading model weights from GitHub..."):
         response = requests.get(url, stream=True)
@@ -25,7 +25,6 @@ def download_model(url, output):
             st.error(f"Failed to download model. Status code: {response.status_code}")
 
 # 2. Model Loading Logic
-# Replace the URL below with your actual GitHub Release link
 model_url = "https://github.com/theankitghotala/UnderwaterROVDetectionModel/releases/download/v1.0/best.pt" 
 model_path = "best.pt"
 
@@ -43,26 +42,42 @@ conf_threshold = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.9)
 st.sidebar.info("Increase this to reduce false detections in murky water.")
 
 # 4. File Uploader
-source_type = st.radio("Select Input Type:", ("Image", "Video"))
+source_type = st.radio("Select Input Type:", ("Image", "Video"), horizontal=True)
 uploaded_file = st.file_uploader(f"Upload {source_type}", type=['jpg', 'jpeg', 'png', 'mp4', 'mov', 'avi'])
 
 if uploaded_file is not None:
     if source_type == "Image":
+        col_input, col_output = st.columns(2)
+        
         image = PIL.Image.open(uploaded_file)
+        
+        with col_input:
+            st.markdown("### Original Image")
+            st.image(image, use_container_width=True)
+        
+        # Run Detection
         results = model.predict(image, conf=conf_threshold)
         res_plotted = results[0].plot()
         
-        st.image(res_plotted, caption="Detection Result", use_container_width=True)
+        with col_output:
+            st.markdown("### Detection Result")
+            st.image(res_plotted, use_container_width=True)
+            
+            # Download Button for the Result
+            buf = io.BytesIO()
+            PIL.Image.fromarray(res_plotted).save(buf, format="PNG")
+            st.download_button(label="📥 Download Result", data=buf.getvalue(), 
+                             file_name="rov_detection.png", mime="image/png")
         
-        # Performance Metrics
-        c1, c2 = st.columns(2)
-        c1.metric(label="Inference Time", value="7.4 ms")
-        c2.metric(label="Model Accuracy (mAP50)", value="98.4%")
+        # Detection Summary Stats
+        st.markdown("---")
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Objects Detected", len(results[0].boxes))
+        m2.metric("Inference Time", f"{results[0].speed['inference']:.1f} ms")
+        m3.metric("mAP50 Accuracy", "98.4%")
         
     else:
-        # REPLACE YOUR OLD VIDEO BLOCK WITH THIS:
         temp_video_path = "temp_video.mp4"
-        
         with open(temp_video_path, "wb") as f:
             f.write(uploaded_file.read())
         
@@ -70,25 +85,22 @@ if uploaded_file is not None:
         
         if st.button("Process Video"):
             with st.spinner("Analyzing frames..."):
-                # Pass the stable string path directly to YOLO
                 results = model.predict(source=temp_video_path, conf=conf_threshold, save=True)
                 
                 st.success("Video processed successfully!")
                 st.info("Note: Resulting detections are generated on the server.")
                 
-                # Cleanup to keep the server clean
                 if os.path.exists(temp_video_path):
                     os.remove(temp_video_path)
 
-# 5. Training Metrics Section (Polished for Professor)
+# 5. Training Metrics Section 
 st.sidebar.markdown("---")
-# Use a checkbox so the charts stay visible once clicked
 show_metrics = st.sidebar.checkbox("📊 View Training Metrics")
 
 if show_metrics:
     st.header("Technical Training & Performance Analysis")
     
-    # Technical Summary for the Professor
+    # Technical Summary
     st.subheader("Objectives & Dataset Summary")
     col_a, col_b, col_c = st.columns(3)
     col_a.metric("Data Split", "88% Train / 8% Test / 4% Validation")
