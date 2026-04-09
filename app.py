@@ -8,6 +8,7 @@ import os
 import requests
 import io
 import time
+import numpy as np
 
 # Page Config
 st.set_page_config(page_title="ROV Detection Dashboard", layout="wide")
