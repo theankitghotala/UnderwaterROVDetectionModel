@@ -7,6 +7,7 @@ import pandas as pd
 import os
 import requests
 import io
+import time
 
 # Page Config
 st.set_page_config(page_title="ROV Detection Dashboard", layout="wide")
@@ -55,11 +56,18 @@ if uploaded_file is not None:
         with col_input:
             st.markdown("### Original Image")
             st.image(image, use_container_width=True)
+
+        with st.status("Analyzing Underwater Environment...", expanded=True) as status:
+            st.write("Preprocessing image frames...")
+            img_array = np.array(original_image)
         
-        # Run Detection
-        results = model.predict(image, conf=conf_threshold)
-        res_plotted = results[0].plot()
-        
+            st.write("Running ROV detection model...")
+            results = model.predict(image, conf=conf_threshold)
+
+            st.write("Rendering bounding boxes and confidence scores...")
+            res_plotted = results[0].plot()
+            status.update(label="Detection Complete!", state="complete", expanded=False)
+            
         with col_output:
             st.markdown("### Detection Result")
             st.image(res_plotted, use_container_width=True)
