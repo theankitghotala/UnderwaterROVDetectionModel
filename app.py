@@ -12,37 +12,25 @@ st.set_page_config(page_title="ROV Detection Dashboard", layout="wide")
 st.title("🚢 Underwater ROV Detection System")
 st.sidebar.title("Settings")
 
-# 1. Download function for large files
-def download_model(file_id, output):
-    URL = "https://docs.google.com/uc?export=download"
-    session = requests.Session()
-    
-    with st.spinner("Connecting to Google Drive to fetch model weights..."):
-        # FIXED: Added quotes around the ID variables below
-        response = session.get(URL, params={'id': file_id}, stream=True)
-        token = None
-        
-        for key, value in response.cookies.items():
-            if key.startswith('download_warning'):
-                token = value
-                break
-
-        if token:
-            params = {'id': file_id, 'confirm': token}
-            response = session.get(URL, params=params, stream=True)
-
-        with open(output, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=32768):
-                if chunk:
+# 1. CLEANED Download Function (Optimized for GitHub Releases)
+def download_model(url, output):
+    with st.spinner("Downloading model weights from GitHub..."):
+        response = requests.get(url, stream=True)
+        if response.status_code == 200:
+            with open(output, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
-    st.success("Model weights downloaded successfully!")
+            st.success("Model weights downloaded successfully!")
+        else:
+            st.error(f"Failed to download model. Status code: {response.status_code}")
 
-# 2. Check if file exists, else download
+# 2. Model Loading Logic
+# Replace the URL below with your actual GitHub Release link
+model_url = "https://github.com/theankitghotala/UnderwaterROVDetectionModel/releases/download/v1.0/best.pt" 
 model_path = "best.pt"
-google_drive_id = '1G_jSSntgCvKx1hQenzEkkv0-HNhEhw26' # FIXED: Added quotes
 
 if not os.path.exists(model_path):
-    download_model(google_drive_id, model_path)
+    download_model(model_url, model_path)
 
 @st.cache_resource
 def load_model():
@@ -50,11 +38,11 @@ def load_model():
 
 model = load_model()
 
-# Sidebar Controls
+# 3. Sidebar Controls
 conf_threshold = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.5)
 st.sidebar.info("Increase this to reduce false detections in murky water.")
 
-# 3. File Uploader
+# 4. File Uploader
 source_type = st.radio("Select Input Type:", ("Image", "Video"))
 uploaded_file = st.file_uploader(f"Upload {source_type}", type=['jpg', 'jpeg', 'png', 'mp4', 'mov', 'avi'])
 
@@ -66,7 +54,7 @@ if uploaded_file is not None:
         
         st.image(res_plotted, caption="Detection Result", use_container_width=True)
         
-        # Displaying metrics
+        # Performance Metrics
         c1, c2 = st.columns(2)
         c1.metric(label="Inference Time", value="7.4 ms")
         c2.metric(label="Model Accuracy (mAP50)", value="98.4%")
@@ -79,12 +67,11 @@ if uploaded_file is not None:
         st.video(tfile.name)
         if st.button("Process Video"):
             with st.spinner("Analyzing frames..."):
-                # Inference on video
                 results = model.predict(source=tfile.name, conf=conf_threshold, save=True)
                 st.success("Video processed successfully!")
-                st.info("Note: In the cloud version, processed videos are stored in the temporary server directory.")
+                st.info("Note: Resulting detections are generated on the server.")
 
-# Training Metrics Button
+# 5. Training Metrics Section
 st.sidebar.markdown("---")
 if st.sidebar.button("📊 View Training Metrics"):
     st.header("Training Performance Analysis")
