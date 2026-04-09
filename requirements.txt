@@ -2,5 +2,5 @@ ultralytics
 streamlit
 pandas
 requests
-opencv-python-headless
 pillow
+opencv-python-headless
