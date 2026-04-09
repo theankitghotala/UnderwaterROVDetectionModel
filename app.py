@@ -6,6 +6,7 @@ import PIL.Image
 import pandas as pd 
 import os
 import requests
+import io
 
 # Page Config
 st.set_page_config(page_title="ROV Detection Dashboard", layout="wide")
