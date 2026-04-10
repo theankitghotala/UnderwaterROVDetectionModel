@@ -28,8 +28,11 @@ def download_model(url, output):
             st.error(f"Failed to download model. Status code: {response.status_code}")
 
 # 2. Model Loading Logic
-model_url = "https://github.com/theankitghotala/UnderwaterROVDetectionModel/releases/download/v1.0/best.pt" 
-model_path = "best.pt"
+# model_url = "https://github.com/theankitghotala/UnderwaterROVDetectionModel/releases/download/v1.0/best.pt" 
+# model_path = "best.pt"
+
+model_url = "https://github.com/theankitghotala/UnderwaterROVDetectionModel/releases/download/v2.0/best_new_26.pt" 
+model_path = "best_new_26.pt"
 
 if not os.path.exists(model_path):
     download_model(model_url, model_path)
@@ -124,7 +127,8 @@ if show_metrics:
 
     try:
         # Load and clean results data
-        df = pd.read_csv("results.csv")
+        # df = pd.read_csv("results.csv")
+        df = pd.read_csv("results_new_26.csv")
         df.columns = df.columns.str.strip()
         
         # Section 1: Loss Curves
