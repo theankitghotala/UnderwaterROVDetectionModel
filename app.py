@@ -90,21 +90,48 @@ if uploaded_file is not None:
         m3.metric("mAP50 Accuracy", "98.4%")
         
     else:
-        temp_video_path = "temp_video.mp4"
-        with open(temp_video_path, "wb") as f:
-            f.write(uploaded_file.read())
+        # Create a temporary file for the uploaded video
+        tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        tfile.write(uploaded_file.read())
+        tfile.close()
         
-        st.video(temp_video_path)
+        st.video(tfile.name)
         
         if st.button("Process Video"):
             with st.spinner("Analyzing frames..."):
-                results = model.predict(source=temp_video_path, conf=conf_threshold, save=True)
+                # 1. Run Inference
+                # 'project' and 'name' ensure we know exactly where the file is saved
+                results = model.predict(source=tfile.name, conf=conf_threshold, save=True, project="runs", name="detect", exist_ok=True)
                 
-                st.success("Video processed successfully!")
-                st.info("Note: Resulting detections are generated on the server.")
+                # 2. Locate the processed file
+                # YOLO typically saves to runs/detect/video_name.mp4
+                processed_path = os.path.join("runs", "detect", os.path.basename(tfile.name))
                 
-                if os.path.exists(temp_video_path):
-                    os.remove(temp_video_path)
+                # 3. Streamlit/Browsers often need H.264 encoding to play MP4s
+                # We use OpenCV to read the saved video and re-save it if necessary, 
+                # or simply point to the output if it works in your environment.
+                if os.path.exists(processed_path):
+                    st.success("Video processed successfully!")
+                    
+                    # Read the processed video file
+                    video_file = open(processed_path, 'rb')
+                    video_bytes = video_file.read()
+                    
+                    st.markdown("### Detection Result")
+                    st.video(video_bytes)
+                    
+                    # Download button for the video
+                    st.download_button(
+                        label="📥 Download Processed Video",
+                        data=video_bytes,
+                        file_name="detected_rov.mp4",
+                        mime="video/mp4"
+                    )
+                else:
+                    st.error("Processing failed: Result file not found.")
+                
+                # Cleanup
+                os.remove(tfile.name)
 
 # 5. Training Metrics Section 
 st.sidebar.markdown("---")
