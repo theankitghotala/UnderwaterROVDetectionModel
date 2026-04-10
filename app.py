@@ -127,8 +127,8 @@ if show_metrics:
 
     try:
         # Load and clean results data
-        df = pd.read_csv("results.csv")
-        # df = pd.read_csv("results_new_26.csv")
+        # df = pd.read_csv("results.csv")
+        df = pd.read_csv("results_new_26.csv")
         df.columns = df.columns.str.strip()
         
         # Section 1: Loss Curves
