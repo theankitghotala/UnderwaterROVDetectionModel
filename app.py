@@ -116,7 +116,7 @@ if show_metrics:
     # Technical Summary
     st.subheader("Objectives & Dataset Summary")
     col_a, col_b, col_c = st.columns(3)
-    col_a.metric("Data Split", "88% Train / 8% Test / 4% Validation")
+    col_a.metric("Data Split", "77% Train / 11% Test / 12% Validation")
     col_b.metric("Training Epochs", "100")
     col_c.metric("Optimizer", "MuSGD")
     
