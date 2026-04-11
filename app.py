@@ -9,15 +9,16 @@ import requests
 import io
 import time
 import numpy as np
+from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
 
 # Page Config
 st.set_page_config(page_title="ROV Detection Dashboard", layout="wide")
 st.title("🚢 Underwater ROV Detection System")
 st.sidebar.title("Settings")
 
-# 1. Download Function
+# Download Function
 def download_model(url, output):
-    with st.spinner("Downloading model weights from GitHub..."):
+    with st.spinner("Downloading model weights..."):
         response = requests.get(url, stream=True)
         if response.status_code == 200:
             with open(output, 'wb') as f:
@@ -27,7 +28,7 @@ def download_model(url, output):
         else:
             st.error(f"Failed to download model. Status code: {response.status_code}")
 
-# 2. Model Loading Logic
+# Model Loading Logic
 # model_url = "https://github.com/theankitghotala/UnderwaterROVDetectionModel/releases/download/v1.0/best.pt" 
 # model_path = "best.pt"
 
@@ -43,97 +44,117 @@ def load_model():
 
 model = load_model()
 
-# 3. Sidebar Controls
-conf_threshold = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.9)
-st.sidebar.info("Increase this to reduce false detections in murky water.")
+# Sidebar Controls
+conf_threshold = st.sidebar.slider("Confidence Threshold", 0.0, 1.0, 0.5)
+st.sidebar.info("Live mode uses a default 0.5 threshold for stability.")
 
-# 4. File Uploader
-source_type = st.radio("Select Input Type:", ("Image", "Video"), horizontal=True)
-uploaded_file = st.file_uploader(f"Upload {source_type}", type=['jpg', 'jpeg', 'png', 'mp4', 'mov', 'avi'])
 
-if uploaded_file is not None:
-    if source_type == "Image":
-        col_input, col_output = st.columns(2)
-        
-        image = PIL.Image.open(uploaded_file)
-        
-        with col_input:
-            st.markdown("### Original Image")
-            st.image(image, use_container_width=True)
+# WebRTC Callback Class for Real-Time
+class VideoProcessor:
+    def recv(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+        results = model.predict(img, conf=conf_threshold)
+        annotated_frame = results[0].plot()
+        return av.VideoFrame.from_ndarray(annotated_frame, format="bgr24")
 
-        with st.status("Analyzing Underwater Environment...", expanded=True) as status:
-            st.write("Preprocessing image frames...")
-            img_array = np.array(image)
-        
-            st.write("Running ROV detection model...")
-            results = model.predict(image, conf=conf_threshold)
 
-            st.write("Rendering bounding boxes and confidence scores...")
-            res_plotted = results[0].plot()
-            status.update(label="Detection Complete!", state="complete", expanded=False)
+# File Uploader
+source_type = st.radio("Select Input Type:", ("Image", "Video","Live Camera"), horizontal=True)
+
+# --- LIVE CAMERA SECTION  ---
+if source_type == "Live Camera":
+    st.markdown("### 🔴 Real-Time ROV Detection")
+    st.info("Click 'Start' to begin streaming. This uses local webcam.")
+    
+    RTC_CONFIG = RTCConfiguration(
+        {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+    )
+
+    webrtc_streamer(
+        key="rov-live",
+        mode=WebRtcMode.SENDRECV,
+        rtc_configuration=RTC_CONFIG,
+        video_processor_factory=VideoProcessor,
+        media_stream_constraints={"video": True, "audio": False},
+        async_processing=True,
+    )
+
+# --- IMAGE & VIDEO SECTION ---
+
+else:
+    uploaded_file = st.file_uploader(f"Upload {source_type}", type=['jpg', 'jpeg', 'png', 'mp4', 'mov', 'avi'])
+    if uploaded_file is not None:
+        if source_type == "Image":
+            image = PIL.Image.open(uploaded_file)
+            col_input, col_output = st.columns(2)
             
-        with col_output:
-            st.markdown("### Detection Result")
-            st.image(res_plotted, use_container_width=True)
+            with col_input:
+                st.markdown("### Original Image")
+                st.image(image, use_container_width=True)
+    
+            with st.status("Analyzing Underwater Environment...", expanded=True) as status:
+                st.write("Preprocessing image frames...")
+                img_array = np.array(image)
             
-            # Download Button for the Result
-            buf = io.BytesIO()
-            PIL.Image.fromarray(res_plotted).save(buf, format="PNG")
-            st.download_button(label="📥 Download Result", data=buf.getvalue(), 
-                             file_name="rov_detection.png", mime="image/png")
-        
-        # Detection Summary Stats
-        st.markdown("---")
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Objects Detected", len(results[0].boxes))
-        m2.metric("Inference Time", f"{results[0].speed['inference']:.1f} ms")
-        m3.metric("mAP50 Accuracy", "98.4%")
-        
-    else:
-        # Create a temporary file for the uploaded video
-        tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
-        tfile.write(uploaded_file.read())
-        tfile.close()
-        
-        st.video(tfile.name)
-        
-        if st.button("Process Video"):
-            with st.spinner("Analyzing frames..."):
-                # 1. Run Inference
-                # 'project' and 'name' ensure we know exactly where the file is saved
-                results = model.predict(source=tfile.name, conf=conf_threshold, save=True, project="runs", name="detect", exist_ok=True)
+                st.write("Running ROV detection model...")
+                results = model.predict(image, conf=conf_threshold)
+    
+                st.write("Rendering bounding boxes and confidence scores...")
+                res_plotted = results[0].plot()
+                status.update(label="Detection Complete!", state="complete", expanded=False)
                 
-                # 2. Locate the processed file
-                # YOLO typically saves to runs/detect/video_name.mp4
-                processed_path = os.path.join("runs", "detect", os.path.basename(tfile.name))
+            with col_output:
+                st.markdown("### Detection Result")
+                st.image(res_plotted, use_container_width=True)
                 
-                # 3. Streamlit/Browsers often need H.264 encoding to play MP4s
-                # We use OpenCV to read the saved video and re-save it if necessary, 
-                # or simply point to the output if it works in your environment.
-                if os.path.exists(processed_path):
-                    st.success("Video processed successfully!")
+                # Download Button for the Result
+                buf = io.BytesIO()
+                PIL.Image.fromarray(res_plotted).save(buf, format="PNG")
+                st.download_button(label="📥 Download Result", data=buf.getvalue(), 
+                                 file_name="rov_detection.png", mime="image/png")
+            
+            # Detection Summary Stats
+            st.markdown("---")
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Objects Detected", len(results[0].boxes))
+            m2.metric("Inference Time", f"{results[0].speed['inference']:.1f} ms")
+            m3.metric("mAP50 Accuracy", "98.4%")
+            
+        elif source_type == "Video":
+            tfile = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+            tfile.write(uploaded_file.read())
+            tfile.close()
+            
+            st.video(tfile.name)
+            
+            if st.button("Process Video"):
+                with st.spinner("Analyzing frames..."):
+                    results = model.predict(source=tfile.name, conf=conf_threshold, save=True, project="runs", name="detect", exist_ok=True)
+                    processed_path = os.path.join("runs", "detect", os.path.basename(tfile.name))
                     
-                    # Read the processed video file
-                    video_file = open(processed_path, 'rb')
-                    video_bytes = video_file.read()
+                    if os.path.exists(processed_path):
+                        st.success("Video processed successfully!")
                     
-                    st.markdown("### Detection Result")
-                    st.video(video_bytes)
-                    
-                    # Download button for the video
-                    st.download_button(
-                        label="📥 Download Processed Video",
-                        data=video_bytes,
-                        file_name="detected_rov.mp4",
-                        mime="video/mp4"
-                    )
-                else:
-                    st.error("Processing failed: Result file not found.")
-                
-                # Cleanup
-                os.remove(tfile.name)
+                        video_file = open(processed_path, 'rb')
+                        video_bytes = video_file.read()
+                        
+                        st.markdown("### Detection Result")
+                        st.video(video_bytes)
+                        
+                        st.download_button(
+                            label="📥 Download Processed Video",
+                            data=video_bytes,
+                            file_name="detected_rov.mp4",
+                            mime="video/mp4"
+                        )
+                    else:
+                        st.error("Processing failed: Result file not found.")
+          
+                    # Cleanup
+                    os.remove(tfile.name)
+    
 
-# 5. Training Metrics Section 
+# Training Metrics Section 
 st.sidebar.markdown("---")
 show_metrics = st.sidebar.checkbox("📊 View Training Metrics")
 
@@ -153,7 +174,6 @@ if show_metrics:
     """)
 
     try:
-        # Load and clean results data
         # df = pd.read_csv("results.csv")
         df = pd.read_csv("results_new_26.csv")
         df.columns = df.columns.str.strip()
